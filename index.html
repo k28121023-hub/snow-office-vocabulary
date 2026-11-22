@@ -313,37 +313,39 @@
         let imageLoadPromise = null;
         let startingGame = false;
 
+        function waitForImage(img) {
+            return new Promise(resolve => {
+                let settled = false;
+                const finish = () => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timer);
+                    img.removeEventListener('load', finish);
+                    img.removeEventListener('error', finish);
+                    resolve();
+                };
+                const timer = setTimeout(finish, 6000);
+                img.addEventListener('load', finish, { once: true });
+                img.addEventListener('error', finish, { once: true });
+                if (img.complete) finish();
+            });
+        }
+
         function prepareGameImages() {
             if (imageLoadPromise) return imageLoadPromise;
             startGameBtn.disabled = true;
             startGameBtn.textContent = '圖片載入中…';
             imageLoadPromise = Promise.all(
-                [playerImg01, playerImg02, bearImgLeft, bearImgRight].map(img => {
-                    if (typeof img.decode === 'function') return img.decode();
-                    return new Promise((resolve, reject) => {
-                        if (img.complete) {
-                            img.naturalWidth > 0 ? resolve() : reject(new Error('圖片載入失敗'));
-                            return;
-                        }
-                        img.addEventListener('load', resolve, { once: true });
-                        img.addEventListener('error', reject, { once: true });
-                    });
-                })
+                [playerImg01, playerImg02, bearImgLeft, bearImgRight].map(waitForImage)
             ).then(() => {
                 imagesReady = true;
                 startGameBtn.disabled = false;
                 startGameBtn.textContent = '開始冒險';
-            }).catch(error => {
-                imagesReady = false;
-                imageLoadPromise = null;
-                startGameBtn.disabled = false;
-                startGameBtn.textContent = '圖片載入失敗，點此重試';
-                throw error;
             });
             return imageLoadPromise;
         }
 
-        prepareGameImages().catch(() => {});
+        prepareGameImages();
 
         const keys = {};
         window.addEventListener('keydown', e => { 
@@ -1100,7 +1102,7 @@
                 if (currentImg.complete && currentImg.naturalWidth !== 0) ctx.drawImage(currentImg, -40, -40, 80, 80);
                 else {
                     if (player.vx < 0) ctx.scale(-1, 1);
-                    ctx.fillStyle=player.isGodMode?'#f59e0b':'#ef4444'; ctx.beginPath(); ctx.roundRect(-18,-22,36,44,10); ctx.fill();
+                    ctx.font = '64px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('⛷️', 0, 0);
                 }
                 ctx.restore();
             }
